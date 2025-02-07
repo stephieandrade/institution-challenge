@@ -3,13 +3,14 @@ package com.test.challenge.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.test.challenge.dto.InstitutionDTO;
 import com.test.challenge.dto.InstitutionInfoDTO;
+import com.test.challenge.exception.ApiCustomBadRequestException;
 import com.test.challenge.model.Institution;
 import com.test.challenge.model.User;
+import com.test.challenge.repository.InstitutionRepository;
 import com.test.challenge.repository.UserRepository;
-import org.apache.coyote.BadRequestException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.test.challenge.repository.InstitutionRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,7 @@ public class InstitutionService implements IGenericService<InstitutionDTO, Long>
     private ObjectMapper mapper;
 
     @Override
-    public InstitutionDTO find(Long aLong) throws BadRequestException {
+    public InstitutionDTO find(Long aLong){
         Optional<Institution> institutionFound = institutionRepository.findById(aLong);
         if(institutionFound.isPresent()){
             InstitutionDTO institutionDTO = new InstitutionDTO();
@@ -38,14 +39,14 @@ public class InstitutionService implements IGenericService<InstitutionDTO, Long>
             institutionDTO.setInstitutionId(institutionFound.get().getInstitutionId());
             return institutionDTO;
         } else{
-            throw new BadRequestException("Data is null");
+            throw new ApiCustomBadRequestException("Data is null");
         }
     }
 
     @Override
-    public InstitutionDTO save(InstitutionDTO institutionDTO) throws BadRequestException {
+    public InstitutionDTO save(InstitutionDTO institutionDTO) {
         if(institutionDTO == null){
-            throw new BadRequestException("Data is null");
+            throw new ApiCustomBadRequestException("Data is null");
         }else{
             Institution institution = mapper.convertValue(institutionDTO, Institution.class);
             institutionRepository.save(institution);
@@ -54,7 +55,7 @@ public class InstitutionService implements IGenericService<InstitutionDTO, Long>
     }
 
     @Override
-    public List<InstitutionDTO> findAll() throws BadRequestException {
+    public List<InstitutionDTO> findAll(){
         List<Institution> institutionList = institutionRepository.findAll();
         List<InstitutionDTO> institutionDTOList = new ArrayList<>();
         if(!institutionList.isEmpty()){
@@ -66,31 +67,27 @@ public class InstitutionService implements IGenericService<InstitutionDTO, Long>
                 institutionDTO.setInstitutionId(institution.getInstitutionId());
                 institutionDTOList.add(institutionDTO);
             });
-        } else{
-            throw new BadRequestException("Data is null");
         }
         return institutionDTOList;
     }
 
     @Override
-    public InstitutionDTO update(InstitutionDTO institutionDTO) throws BadRequestException {
+    public InstitutionDTO update(InstitutionDTO institutionDTO) {
         Optional<Institution> foundInstitution = institutionRepository.findById(institutionDTO.getInstitutionId());
         if(foundInstitution.isPresent()){
             foundInstitution.get().setName(institutionDTO.getName());
             foundInstitution.get().setUsers(institutionDTO.getUsers());
             return mapper.convertValue(institutionRepository.save(foundInstitution.get()), InstitutionDTO.class);
         }else{
-            throw new BadRequestException("Institution could not be updated as it does not exist in the database.");
+            throw new EntityNotFoundException("Institution could not be updated as it does not exist in the database.");
         }
     }
 
     @Override
-    public void delete(Long aLong) throws BadRequestException {
+    public void delete(Long aLong) {
         Optional<Institution> foundInstitution = institutionRepository.findById(aLong);
         if(foundInstitution.isPresent()){
             institutionRepository.deleteById(aLong);
-        }else{
-            throw new BadRequestException("Institution could not be deleted as it does not exist in the database.");
         }
     }
 
@@ -103,7 +100,7 @@ public class InstitutionService implements IGenericService<InstitutionDTO, Long>
             Long userCount = ((Number) result[2]).longValue();
             return new InstitutionInfoDTO(institutionId, name, userCount);
         }else{
-            throw new RuntimeException("Institution not found with id: " + id);
+            throw new EntityNotFoundException("Institution not found with id: " + id);
         }
     }
 }

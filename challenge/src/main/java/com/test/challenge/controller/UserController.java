@@ -1,12 +1,14 @@
 package com.test.challenge.controller;
 
 import com.test.challenge.dto.UserDTO;
+import com.test.challenge.exception.ApiCustomBadRequestException;
 import com.test.challenge.service.UserService;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/users")
@@ -16,48 +18,49 @@ public class UserController {
     private UserService userService;
 
     @PostMapping()
-    public ResponseEntity saveUser(@RequestBody UserDTO UserDTO)throws BadRequestException {
-        return ResponseEntity.ok(userService.save(UserDTO));
+    public ResponseEntity<Object> saveUser(@RequestBody UserDTO UserDTO) {
+        return ResponseEntity.accepted().body(UserDTO);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity get(@PathVariable Long id) throws BadRequestException {
+    public ResponseEntity<Object> get(@PathVariable Long id) throws BadRequestException {
         return ResponseEntity.ok(userService.find(id));
     }
 
     @GetMapping(path = "/all", produces = "application/json")
-    public ResponseEntity getAll(){
-        return ResponseEntity.ok(userService.findAll());
+    public List<UserDTO> getAll(){
+        return userService.findAll();
     }
 
     @PutMapping()
-    public ResponseEntity update(@RequestBody UserDTO UserDTO) throws BadRequestException {
-        userService.update(UserDTO);
-        return new ResponseEntity<>(HttpStatus.OK);
+    public ResponseEntity<Object> update(@RequestBody UserDTO UserDTO) {
+        if (UserDTO == null){
+            throw new ApiCustomBadRequestException("Error updating user");
+        }else{
+            return ResponseEntity.ok(UserDTO);
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity delete(@PathVariable Long id) throws BadRequestException {
+    public void delete(@PathVariable Long id) {
         userService.delete(id);
-        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping("/institutions/{institutionId}")
-    public ResponseEntity getUsersByInstitution(@PathVariable Long institutionId) throws BadRequestException {
-        return ResponseEntity.ok(userService.findUsersByInstitution(institutionId));
+    public List<UserDTO> getUsersByInstitution(@PathVariable Long institutionId) {
+        return userService.findUsersByInstitution(institutionId);
     }
 
     @GetMapping("/primary-institution/{institutionId}")
-    public ResponseEntity getUsersByPrimaryInstitution(@PathVariable Long institutionId) throws BadRequestException {
-        return ResponseEntity.ok(userService.findUsersByPrimaryInstitution(institutionId));
+    public List<UserDTO> getUsersByPrimaryInstitution(@PathVariable Long institutionId)  {
+        return userService.findUsersByPrimaryInstitution(institutionId);
     }
 
     @PostMapping("/{userId}/institutions/{institutionId}")
-    public ResponseEntity<Void> assignUserToInstitution(
+    public void assignUserToInstitution(
             @PathVariable Long userId,
             @PathVariable Long institutionId,
             @RequestParam(defaultValue = "false") boolean isPrimary) {
         userService.assignUserToInstitution(userId, institutionId, isPrimary);
-        return ResponseEntity.ok().build();
     }
 }

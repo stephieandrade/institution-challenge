@@ -1,13 +1,18 @@
 package com.test.challenge.controller;
 
 import com.test.challenge.dto.InstitutionDTO;
-import com.test.challenge.service.UserService;
+import com.test.challenge.dto.InstitutionInfoDTO;
+import com.test.challenge.service.InstitutionService;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.test.challenge.service.InstitutionService;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/institutions")
@@ -17,39 +22,41 @@ public class InstitutionController {
     private InstitutionService institutionService;
 
     @PostMapping()
-    public ResponseEntity saveInstitution(@RequestBody InstitutionDTO institutionDTO)throws BadRequestException {
+    public ResponseEntity<InstitutionDTO> saveInstitution(@RequestBody InstitutionDTO institutionDTO){
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add("date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
         if(institutionDTO != null) {
-            institutionService.save(institutionDTO);
-            return new ResponseEntity<>(HttpStatus.CREATED);
+            return new ResponseEntity<>(institutionService.save(institutionDTO), httpHeaders, HttpStatus.CREATED);
         }
-       return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity get(@PathVariable Long id) throws BadRequestException {
-        return ResponseEntity.ok(institutionService.find(id));
+    public ResponseEntity<InstitutionDTO> get(@PathVariable Long id){
+        if(institutionService.find(id) == null){
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else{
+            return new ResponseEntity<>(institutionService.find(id), HttpStatus.OK);
+        }
     }
 
-    @GetMapping(path = "/all", produces = "application/json")
-    public ResponseEntity getAll() throws BadRequestException {
-        return ResponseEntity.ok(institutionService.findAll());
+    @GetMapping(path = "/all")
+    public List<InstitutionDTO> getAll(){
+        return institutionService.findAll();
     }
 
     @PutMapping()
-    public ResponseEntity update(@RequestBody InstitutionDTO institutionDTO) throws BadRequestException {
-        institutionService.update(institutionDTO);
-        return new ResponseEntity<>(HttpStatus.OK);
+    public InstitutionDTO update(@RequestBody InstitutionDTO institutionDTO) {
+        return institutionService.update(institutionDTO);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity delete(@PathVariable Long id) throws BadRequestException {
+    public void delete(@PathVariable Long id){
         institutionService.delete(id);
-        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping(path = "/{id}/data")
-    public ResponseEntity test(@PathVariable Long id){
-        return ResponseEntity.ok(institutionService.getAllInstitutionData(id));
+    public InstitutionInfoDTO getAllInstitutionData(@PathVariable Long id){
+        return institutionService.getAllInstitutionData(id);
     }
 
 }

@@ -2,16 +2,19 @@ package com.test.challenge.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.test.challenge.dto.UserDTO;
+import com.test.challenge.exception.ApiCustomBadRequestException;
 import com.test.challenge.model.Institution;
 import com.test.challenge.model.User;
 import com.test.challenge.repository.InstitutionRepository;
 import com.test.challenge.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,7 +30,7 @@ public class UserService implements IGenericService<UserDTO, Long>{
     private ObjectMapper mapper;
 
     @Override
-    public UserDTO find(Long aLong) throws BadRequestException {
+    public UserDTO find(Long aLong)  {
         Optional<User> userFound = userRepository.findById(aLong);
         UserDTO userFoundDTO = new UserDTO();
         if (userFound.isPresent()) {
@@ -38,13 +41,16 @@ public class UserService implements IGenericService<UserDTO, Long>{
             userFoundDTO.setInstitutionId(userFound.get().getInstitution().getInstitutionId());
             return userFoundDTO;
         } else {
-            throw new BadRequestException("No user exists with id: " + aLong);
+            throw new EntityNotFoundException("No user exists with id: " + aLong);
         }
     }
 
     @Override
-    public UserDTO save(UserDTO userDTO) throws BadRequestException {
+    public UserDTO save(UserDTO userDTO) {
         Optional<Institution> foundInstitution = institutionRepository.findById(userDTO.getInstitutionId());
+        if(userDTO.getEmail() == null){
+            throw new ApiCustomBadRequestException("Email is missing in user data.");
+        }
         if(foundInstitution.isPresent()){
             User user = new User();
             user.setInstitution(foundInstitution.get());
@@ -53,8 +59,9 @@ public class UserService implements IGenericService<UserDTO, Long>{
             user.setEmail(userDTO.getEmail());
             userRepository.save(user);}
         else{
-            throw new BadRequestException("Institution doesn't exist, therefore user can't be created for the institution established.");
-        }return userDTO;
+            throw new EntityNotFoundException("Institution doesn't exist, therefore user can't be created for the institution established.");
+        }
+        return userDTO;
     }
 
     @Override
@@ -67,9 +74,9 @@ public class UserService implements IGenericService<UserDTO, Long>{
         return userDTOList;
     }
 
-    public List<UserDTO> findUsersByInstitution(Long id) throws BadRequestException{
+    public List<UserDTO> findUsersByInstitution(Long id) {
         if(id == null){
-            throw new BadRequestException("Institution does not exist.");
+            throw new EntityNotFoundException("Institution does not exist.");
         }
         Optional<List<User>> userList = userRepository.findUsersByInstitution(id);
 
@@ -81,12 +88,12 @@ public class UserService implements IGenericService<UserDTO, Long>{
         return userDTOList;
     }
 
-    public List<UserDTO> findUsersByPrimaryInstitution(Long institutionId) throws BadRequestException {
+    public List<UserDTO> findUsersByPrimaryInstitution(Long institutionId) {
         Optional<List<User>> userList = userRepository.findUsersByPrimaryInstitution(institutionId);
         if(userList.isPresent()){
                 return userList.get().stream().map(user -> new UserDTO(user.getUserId(), user.getEmail(), user.getFirstName(), user.getLastName(), user.getInstitution().getInstitutionId())).collect(Collectors.toList());
         }else{
-            throw new BadRequestException("Users not found for the Institution id selected");
+            throw new EntityNotFoundException("Users not found for the Institution id selected");
         }
     }
 
@@ -108,26 +115,24 @@ public class UserService implements IGenericService<UserDTO, Long>{
     }
 
     @Override
-    public void delete(Long aLong) throws BadRequestException {
+    public void delete(Long aLong){
         Optional<User> foundUser = userRepository.findById(aLong);
         if(foundUser.isPresent()){
             userRepository.deleteById(aLong);
         }else{
-            throw new BadRequestException("User could not be deleted as it does not exist in the database.");
+            throw new EntityNotFoundException("User could not be deleted as it does not exist in the database.");
         }
     }
 
     public void assignUserToInstitution(Long userId, Long institutionId, boolean isPrimary) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
         Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new RuntimeException("Institution not found with id: " + institutionId));
+                .orElseThrow(() -> new EntityNotFoundException("Institution not found with id: " + institutionId));
         user.getInstitutions().add(institution);
-
         if (isPrimary) {
             user.setInstitution(institution);
         }
-
         userRepository.save(user);
     }
 }
